@@ -1,0 +1,13 @@
+name: shiny-filteRs
+title: shiny-filteRs
+username:
+account: matthew-j-oldach
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 3934835
+bundleId: 4452024
+url: https://matthew-j-oldach.shinyapps.io/shiny-filteRs/
+when: 1617997113.98093
+asMultiple: FALSE
+asStatic: FALSE
+ignoredFiles: .Rprofile
