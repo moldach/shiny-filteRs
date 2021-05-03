@@ -12,11 +12,12 @@ library(isoband)
 library(sf)
 library(brickr)
 library(ggvoronoi)
-library(ditherer)
 library(colorfindr)
 library(sketcher)
 library(ggforce)
-
+library(shinycssloaders)
+library(reticulate)
+library(qrcode)
 
 source("helpers.R")
 
@@ -26,8 +27,8 @@ shinyApp(
     preloader = FALSE,
     loading_duration = 3,
     options = list(
-      theme = c("ios", "md", "auto", "aurora"),
-      dark = TRUE,
+      theme = "auto",
+      dark = FALSE,
       filled = TRUE,
       color = "#c32aa3",
       touch = list(tapHold = TRUE, tapHoldDelay = 750, iosTouchRipple = FALSE),
@@ -65,54 +66,9 @@ shinyApp(
           tabName = "Tab 1",
           icon = f7Icon("camera_fill"),
           active = TRUE,
-          f7Flex(
-            prettyRadioButtons(
-              inputId = "theme",
-              label = "Select a theme:",
-              thick = TRUE,
-              inline = TRUE,
-              selected = "md",
-              choices = c("ios", "md"),
-              animation = "pulse",
-              status = "info"
-            ),
-            prettyRadioButtons(
-              inputId = "color",
-              label = "Select a color:",
-              thick = TRUE,
-              inline = TRUE,
-              selected = "dark",
-              choices = c("light", "dark"),
-              animation = "pulse",
-              status = "info"
-            )
-          ),
           f7Link(label = "Twitter", href = "https://twitter.com/MattOldach", icon = f7Icon("logo_twitter")),
           f7Link(label = "LinkedIn", href = "https://www.linkedin.com/in/matthewoldach/", icon = f7Icon("logo_linkedin")),
           f7Link(label = "Instagram", href = "https://www.instagram.com/lovedrop69/", icon = f7Icon("logo_instagram")),
-          tags$head(
-            tags$script(
-              'Shiny.addCustomMessageHandler("ui-tweak", function(message) {
-                var os = message.os;
-                var skin = message.skin;
-                if (os === "md") {
-                  $("html").addClass("md");
-                  $("html").removeClass("ios");
-                  $(".tab-link-highlight").show();
-                } else if (os === "ios") {
-                  $("html").addClass("ios");
-                  $("html").removeClass("md");
-                  $(".tab-link-highlight").hide();
-                }
-                if (skin === "dark") {
-                 $("html").addClass("theme-dark");
-                } else {
-                  $("html").removeClass("theme-dark");
-                }
-               });
-              '
-            )
-          ),
           
           f7Shadow(
             intensity = 10,
@@ -121,8 +77,7 @@ shinyApp(
               title = "️📸 from {shinysense}",
               image = "https://images.unsplash.com/photo-1557682224-5b8590cd9ec5?ixid=MXwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHw%3D&ixlib=rb-1.2.1&auto=format&fit=crop&w=1015&q=80",
               shinyviewr_UI("myCamera", height = "400px"),
-              br(),
-              imageOutput("snapshot")
+              shinycssloaders::withSpinner(imageOutput("snapshot"))
             )
           ),
           f7ExpandableCard(
@@ -145,23 +100,25 @@ shinyApp(
             f7Card(
               title = "🖌️ Filter Selection 🎨",
               image = "https://images.unsplash.com/photo-1557682224-5b8590cd9ec5?ixid=MXwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHw%3D&ixlib=rb-1.2.1&auto=format&fit=crop&w=1015&q=80",
-              f7Picker(
+              f7Select(
                 inputId = "filterPicker",
-                placeholder = "Some text here!",
                 label = "😍 Make your selection here 😍",
-                choices = c("Packed Circles", 
+                selected = "Packed Circles",
+                choices = c("Packed Circles",
+                            "Terms of Use",
+                            "Cascade",
+                            "Glitch",
+                            "Pixelate",
                             "Voronoi Diagram", 
-                            "LGBT", 
+                            "LGBT🌈", 
                             "Lego Mosaic",
                             "BSpline Portrait",
                             "Line Portrait",
                             "Rego Portrait",
                             "Split-Bar Portrait",
-                            "Ditherer",
                             "Sketcher")
               ),
-              br(),
-              imageOutput("filter")
+              shinycssloaders::withSpinner(imageOutput("filter"))
             )
           )
         ),
@@ -182,7 +139,7 @@ shinyApp(
             f7Card(
               title = "Add some 🧙✨ {magick}",
               image = "https://images.unsplash.com/photo-1557682224-5b8590cd9ec5?ixid=MXwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHw%3D&ixlib=rb-1.2.1&auto=format&fit=crop&w=1015&q=80",
-              imageOutput("image_magick"),
+              shinycssloaders::withSpinner(imageOutput("image_magick")),
               br(),
               footer = tagList(
                 f7Button("toggleBlur", color = "pink", label = "Blur", fill = TRUE, rounded = TRUE, shadow = TRUE, size = "small"),
@@ -203,7 +160,7 @@ shinyApp(
                     color = "green"
                   )
                 ),
-                f7Button("toggleImplode", color = "blue", label = "Implode", fill = TRUE, rounded = TRUE, shadow = TRUE, size = "small"),
+                f7Button("toggleImplode", color = "yellow", label = "Implode", fill = TRUE, rounded = TRUE, shadow = TRUE, size = "small"),
                 f7Sheet(
                   id = "implodeSheet",
                   label = "Implode",
@@ -220,7 +177,7 @@ shinyApp(
                     color = "green"
                   )
                 ),
-                f7Button("toggleRotate", color = "purple", label = "Rotate", fill = TRUE, rounded = TRUE, shadow = TRUE, size = "small"),
+                f7Button("toggleRotate", color = "orange", label = "Rotate", fill = TRUE, rounded = TRUE, shadow = TRUE, size = "small"),
                 f7Sheet(
                   id = "rotateSheet",
                   label = "Rotate",
@@ -237,8 +194,13 @@ shinyApp(
                     color = "green"
                   )
                 ),
-                f7Button(inputId = "go", color = "orange", label = "Charcoal", fill = TRUE, rounded = TRUE, shadow = TRUE, size = "small")
-              )
+                f7Toggle("toggleCharcoal", color = "red", label = "Charcoal", checked = FALSE),
+                f7Toggle("toggleEdge", color = "green", label = "Edge", checked = FALSE),
+                f7Toggle("toggleNegate", color = "blue", label = "Negate", checked = FALSE),
+                f7Toggle("toggleFlip", color = "yellow", label = "Flip", checked = FALSE),
+                f7Toggle("toggleFlop", color = "pink", label = "Flop", checked = FALSE),
+              ),
+              f7DownloadButton("downloadImage", label = "Download your image!")
             )
           )
         )
@@ -247,6 +209,20 @@ shinyApp(
   ),
   server = function(input, output, session) {
     
+    f7Dialog(title = "Terms and Conditions", type = "alert", text = "We reserve the right to modify the contents of this site at any time, but we have no obligation to update any information on our site. By agreeing to these Terms of Service, have given us your consent to collect information using whatismyip.com. You agree to indemnify, defend and hold harmless @mattoldach harmless from any claim or demand, including reasonable attorneys’ fees, made by any third-party due to or arising out of your breach of these Terms of Service or the documents they incorporate by reference, or your violation of any law or the rights of a third-party.")
+    
+    ## Load Virtual env with dependencies
+    reticulate::virtualenv_create(envname = 'pyFilters', python = "/usr/bin/python3")
+    reticulate::virtualenv_install('pyFilters', packages = c('glitchart', 'pixelate', 'Pillow', 'tqdm'))
+    reticulate::use_virtualenv('pyFilters', required = TRUE)
+    system2('wget https://download.imagemagick.org/ImageMagick/download/binaries/magick')
+    
+    imageLoc <- reactiveVal("images/cam.jpeg")
+    ## convert the img location to an img value
+    imageVal <- reactive({
+      image_convert(image_read(imageLoc()), "jpeg")
+    })
+     
     myCamera <- callModule(
       shinyviewr,
       "myCamera",
@@ -254,12 +230,9 @@ shinyApp(
       output_width = 250
     )
     
-    ### TRY PLACING YOUR OTHER TWO WHICH ARE DEPENDENT WITHIN THE OBSERVENT? OR DO I CREATE MY OWN?
     # logic for what happens after a user has drawn their values.
     observeEvent(myCamera(), {
       photo <- myCamera()
-      
-      ##### Above/Below may need to be modified for DPED
       
       # Save plot as jpeg first
       jpeg(filename = "images/cam.jpeg")
@@ -279,9 +252,62 @@ shinyApp(
         bg = "transparent",
         execOnResize = TRUE
       )
-      
+
       observeEvent(input$filterPicker, {
-        if(input$filterPicker == "Packed Circles") {
+        if(input$filterPicker == "Cascade") {
+          system('python python/cascade.py images/cam.jpeg')
+          photo <- load.image("images/cascade_cam.jpeg")
+          frames <- image_graph(width = 400, height = 400)
+          plot(photo, axes=FALSE)
+          tmpimg <- magick::image_animate(frames, 1) %>%
+            image_write(tempfile(fileext = "jpg"), format = "jpg")
+          #Check its existence
+          if (file.exists('images/japanified_cam.jpeg')) {
+            #Delete file if it exists
+            file.remove('images/japanified_cam.jpeg')
+          }
+        } else if(input$filterPicker == "Glitch") {
+          py_run_file("python/glitchart.py")
+          photo <- imager::load.image("cam_glitch.jpg")
+          frames <- image_graph(width = 400, height = 400)
+          plot(photo,axes = FALSE)
+          tmpimg <- magick::image_animate(frames, 1) %>%
+            image_write(tempfile(fileext = "jpg"), format = "jpg")
+          if (file.exists('cam_glitch.jpg')) {
+            #Delete file if it exists
+            file.remove('cam_glitch.jpg')
+          }
+        } else if(input$filterPicker == "Terms of Use") {
+          image <- load.image("images/cam.jpeg")
+          #### MOVE THIS SECTION DOWN!!!
+          # Now that the user has accepted the agreements (which no one ever reads...) lets convert their IP address into a qrcode
+          ip <- geoloc::wtfismyip()
+          png('images/qrcode.png')
+          ### remove me at go time
+          # qrcode::qrcode_gen(ip$Your_IPAddress)
+          qrcode_gen("https://datascienceplus.com/")
+          dev.off()
+          system('magick convert images/qrcode.png -alpha set -background none -channel A -evaluate multiply 0.420 +channel images/qrcode.png')
+          qrcode <- image_read("images/qrcode.png")
+          # maybe adjust this slightly
+          qrcode <- image_scale(qrcode, '440x440')
+          photo <- c(image, qrcode)
+          frames <- image_graph(width = 400, height = 400)
+          plot(photo,axes = FALSE)
+          tmpimg <- magick::image_animate(frames, 1) %>%
+            image_write(tempfile(fileext = "jpg"), format = "jpg")
+        } else if(input$filterPicker == "Pixelate") {
+          py_run_file("python/pixelate.py")
+          photo <- imager::load.image("images/pixelate_cam.jpeg")
+          frames <- image_graph(width = 400, height = 400)
+          plot(photo,axes = FALSE)
+          tmpimg <- magick::image_animate(frames, 1) %>%
+            image_write(tempfile(fileext = "jpeg"), format = "jpg")
+          if (file.exists('images/pixelate_cam.jpeg')) {
+            #Delete file if it exists
+            file.remove('images/pixelate_cam.jpeg')
+          }
+        } else if(input$filterPicker == "Packed Circles") {
           im <- load.image("images/cam.jpeg")
           ## Convert Image into Data Frame
           im.df.colour <- im %>%
@@ -320,7 +346,7 @@ shinyApp(
           tmpimg <- magick::image_animate(frames, 1) %>%
             image_write(tempfile(fileext = "jpg"), format = "jpg")
           
-        } else if(input$filterPicker == "LGBT"){
+        } else if(input$filterPicker == "LGBT🌈"){
           image_sf <- "images/cam.jpeg" %>%
             image_read() %>%
             image_resize(geometry = "200x200") %>%
@@ -378,6 +404,10 @@ shinyApp(
             scale_fill_identity() +
             scale_y_reverse() +
             theme_void()
+          frames <- image_graph(width = 400, height = 400)
+          print(photo)
+          tmpimg <- magick::image_animate(frames, 1) %>%
+            image_write(tempfile(fileext = "jpg"), format = "jpg")
           
         } else if(input$filterPicker == "BSpline Portrait"){ 
           img <- image_read("images/cam.jpeg") %>% 
@@ -428,7 +458,10 @@ shinyApp(
             theme_void() +
             theme(legend.position = "none",
                   plot.background = element_rect(fill = col_bg, color = NA)) 
-          
+          frames <- image_graph(width = 400, height = 400)
+          print(photo)
+          tmpimg <- magick::image_animate(frames, 1) %>%
+            image_write(tempfile(fileext = "jpg"), format = "jpg")
           
         }  else if(input$filterPicker == "Line Portrait"){ 
           img <- image_read("images/cam.jpeg")%>%
@@ -566,52 +599,84 @@ shinyApp(
           print(photo)
           tmpimg <- magick::image_animate(frames, 1) %>%
             image_write(tempfile(fileext = "jpg"), format = "jpg")
-        } else if (input$filterPicker == "Ditherer"){
-          # Create a 16 colour target palette from the image
-          img <- "images/cam.jpeg"
-          set.seed(1)
-          tp <-
-            colorfindr::get_colors(img) %>% 
-            colorfindr::make_palette(n = 32, show = FALSE)
-          photo <- dither(img, target_palette = tp) 
-          frames <- image_graph(width = 400, height = 400)
-          print(photo)
-          tmpimg <- magick::image_animate(frames, 1) %>%
-            image_write(tempfile(fileext = "jpg"), format = "jpg")
         } else if (input$filterPicker == "Sketcher"){
           # Create a 16 colour target palette from the image
           img <- im_load("images/cam.jpeg")
           im2 = sketch(img, style = 1, lineweight = 0.8, shadow = 0.25) # may take some seconds
           photo <- plot(im2)
           frames <- image_graph(width = 400, height = 400)
-          print(photo)
+          plot(photo)
           tmpimg <- magick::image_animate(frames, 1) %>%
             image_write(tempfile(fileext = "jpg"), format = "jpg")
         }
-        
-        
-        
 
-      
-        output$filter <- renderPlot(
+        output$filter <- renderImage(
           {
-            photo
-          },
-          bg = "transparent",
-          execOnResize = TRUE
+            image <- image_read(tmpimg) %>%
+              image_resize("400x400") 
+            
+            tmpfile <- image %>%
+              image_write(tempfile(fileext = "jpg"), format = "jpg")
+            
+            # Return a list
+            list(src = tmpfile, contentType = "photo/jpeg")
+          }, deleteFile = FALSE
         )
           
-        output$image_magick <- renderImage({
+        updatedImageLoc <- reactive({
+          
           image <- image_read(tmpimg)
+          
+          ## Boolean operators
+          if(input$toggleCharcoal == TRUE) {
+            image <- image %>%
+              image_charcoal()
+          } 
+          
+          if(input$toggleEdge == TRUE) {
+            image <- image %>%
+              image_edge()
+          }
+
+          if(input$toggleNegate == TRUE) {
+            image <- image %>%
+              image_negate()
+          }
+
+          if(input$toggleFlip == TRUE) {
+            image <- image %>%
+              image_flip()
+          }
+
+          if(input$toggleFlop == TRUE) {
+            image <- image %>%
+              image_flop()
+          }
+          
           tmpfile <- image %>%
             image_implode(input$implode) %>%
             image_blur(input$blur, input$blur) %>%
-            image_rotate(input$rotation) %>%
-            # image_resize(input$size) %>%
+            image_rotate(input$rotation) %>% 
+            image_resize("400x400") %>%
             image_write(tempfile(fileext = "jpg"), format = "jpg")
+          
+          tmpfile
+        })
+        
+        output$image_magick <- renderImage({
           # Return a list
-          list(src = tmpfile, contentType = "photo/jpeg")
+          list(src = updatedImageLoc(), contentType = "photo/jpeg")
         }, deleteFile = FALSE)
+        
+        output$downloadImage <- downloadHandler(
+          filename = "Modified_image.jpeg",
+          contentType = "image/jpeg",
+          content = function(file) {
+            ## copy the file from the updated image location to the final download location
+            im <- image_read(updatedImageLoc())
+            image_write(im, file)
+          }
+        ) 
         
       })
     })
@@ -638,9 +703,13 @@ shinyApp(
       updateF7Picker(
         inputId = "filterPicker",
         value = "Packed Circles",
-        choices = c("Packed Circles", 
+        choices = c("Packed Circles",
+                    "Terms of Use",
+                    "Cascade",
+                    "Glitch",
+                    "Pixelate",
                     "Voronoi Diagram", 
-                    "LGBT", 
+                    "LGBT🌈", 
                     "Lego Mosaic",
                     "BSpline Portrait",
                     "Line Portrait",
@@ -651,14 +720,6 @@ shinyApp(
         openIn = "sheet",
         toolbarCloseText = "Close",
         sheetSwipeToClose = TRUE
-      )
-    })
-    
-    # send the theme to javascript
-    observe({
-      session$sendCustomMessage(
-        type = "ui-tweak",
-        message = list(os = input$theme, skin = input$color)
       )
     })
   }
